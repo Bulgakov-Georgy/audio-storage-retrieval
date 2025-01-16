@@ -1,0 +1,41 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.4.1'
+    id 'org.jetbrains.kotlin.jvm' version '2.1.0'
+    id "org.jetbrains.kotlin.plugin.spring" version "2.1.0"
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+dependencies {
+    implementation "org.springframework.boot:spring-boot-starter-jdbc:$springBootVersion"
+    implementation "org.springframework.boot:spring-boot-starter-web:$springBootVersion"
+    implementation "org.springframework.boot:spring-boot-starter-data-jpa:$springBootVersion"
+    implementation "software.amazon.awssdk:s3:$s3"
+    implementation "software.amazon.awssdk:apache-client:$s3"
+    implementation "org.apache.commons:commons-lang3:$apacheCommonsLang"
+    implementation "commons-io:commons-io:$apacheCommonsIO"
+    implementation "ws.schild:jave-all-deps:$jave"
+    implementation "org.postgresql:postgresql:$postgresqlVersion"
+    runtimeOnly "ch.qos.logback:logback-classic:$logbackVersion"
+    implementation "org.jetbrains.kotlin:kotlin-allopen:$jetbrainsKotlinVersion"
+    runtimeOnly "org.jetbrains.kotlin:kotlin-reflect:$jetbrainsKotlinVersion"
+
+    testImplementation "org.mockito.kotlin:mockito-kotlin:$mockitoKotlinVersion"
+    testImplementation "org.springframework.boot:spring-boot-starter-test:$springBootVersion"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher:$junitVersion"
+}
+
+test {
+    useJUnitPlatform()
+}

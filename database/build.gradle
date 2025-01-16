@@ -1,0 +1,14 @@
+apply plugin: 'org.flywaydb.flyway'
+
+buildscript {
+    dependencies {
+        classpath "org.flywaydb:flyway-gradle-plugin:$flywayVersion"
+        classpath "org.flywaydb:flyway-database-postgresql:$flywayVersion"
+
+        classpath "org.postgresql:postgresql:$postgresqlVersion"
+    }
+}
+
+flyway {
+    configFiles = ['flyway.conf']
+}

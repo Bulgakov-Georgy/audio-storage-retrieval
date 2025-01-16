@@ -1,0 +1,72 @@
+version: '3.9'
+
+# Pretty crude docker-compose with the sole purpose of gathering everything into one runnable
+services:
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./database/scripts/create-database.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U audio_storage_retrieval -d audio_storage_retrieval" ]
+      interval: 1m
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+  minio:
+    image: minio/minio
+    container_name: minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    command: server /data --console-address ":9001"
+    # workaround for creating bucket at the start time for testing purposes
+    entrypoint: >
+      /bin/sh -c '
+        isAlive() { curl -sf http://127.0.0.1:9000/minio/health/live; }    # check if Minio is alive
+        minio $0 "$@" --quiet & echo $! > /tmp/minio.pid                   # start Minio in the background
+        while ! isAlive; do sleep 0.1; done                                # wait until Minio is alive
+        mc alias set minio http://127.0.0.1:9000 minioadmin minioadmin     # setup Minio client
+        mc mb minio/audio-storage-retrieval || true                        # create a test bucket
+        mc anonymous set public minio/audio-storage-retrieval              # make the test bucket public
+        kill -s INT $(cat /tmp/minio.pid) && rm /tmp/minio.pid             # stop Minio
+        while isAlive; do sleep 0.1; done                                  # wait until Minio is stopped
+        exec minio $0 "$@"                                                 # start Minio in the foreground
+      '
+  flyway:
+    depends_on:
+      postgres:
+        condition: service_healthy
+    image: flyway/flyway
+    volumes:
+      - ./database/scripts/migrations:/flyway/scripts/migrations
+      - ./database/flyway.conf:/flyway/conf/flyway.conf
+    container_name: flyway
+    command: migrate
+  # For local run in docker without pre-built image. Needs result of execution of ./gradlew bootJar
+  #  service:
+  #    depends_on:
+  #      - postgres
+  #      - flyway
+  #      - minio
+  #    image: bellsoft/liberica-openjdk-debian:17
+  #    volumes:
+  #      - ./service/build/libs:/usr/local/audio-storage-retrieval/
+  #    container_name: service
+  #    working_dir: /usr/local/audio-storage-retrieval
+  #    ports:
+  #      - "8080:8080"
+  #    entrypoint: java -jar service-latest.jar
+  service:
+    depends_on:
+      - postgres
+      - flyway
+      - minio
+    image: ghcr.io/bulgakov-georgy/audio-storage-retrieval:main
+    container_name: service
+    ports:
+      - "8080:8080"
